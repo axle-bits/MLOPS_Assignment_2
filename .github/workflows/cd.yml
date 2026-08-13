@@ -13,6 +13,7 @@ jobs:
     runs-on: self-hosted
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      MODELS_DIR: C:/Users/adith/OneDrive/Desktop/MTech/MLOPS/assignment_2/models
     steps:
       - uses: actions/checkout@v4
 

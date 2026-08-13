@@ -25,7 +25,8 @@ def check_predict(image_path: str) -> dict:
         r = requests.post(f"{BASE_URL}/predict", files=files, timeout=10)
     r.raise_for_status()
     body = r.json()
-    assert body["label"] in ("cat", "dog"), f"unexpected label: {body}"
+    assert body["label"] == "cat", f"expected cat, got: {body}"
+    assert body["probabilities"]["cat"] > 0.6, f"low-confidence/random-looking prediction: {body}"
     return body
 
 

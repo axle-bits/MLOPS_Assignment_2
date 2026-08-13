@@ -19,7 +19,9 @@ _TRANSFORM = transforms.Compose(
 
 def load_model(weights_path: str | None = None, device: str = "cpu") -> SimpleCNN:
     model = SimpleCNN(num_classes=len(CLASSES))
-    if weights_path is not None and Path(weights_path).exists():
+    if weights_path is not None:
+        if not Path(weights_path).exists():
+            raise FileNotFoundError(f"Model weights not found at {weights_path}")
         state_dict = torch.load(weights_path, map_location=device)
         model.load_state_dict(state_dict)
     model.to(device)

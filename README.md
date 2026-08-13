@@ -119,18 +119,22 @@ The API reads its weights from `MODEL_PATH` (default `models/model.pt`) and expo
 
 ## Deploy via Docker Compose
 
-```bash
-export DOCKERHUB_USERNAME=axlebits
+```powershell
+$env:DOCKERHUB_USERNAME = "axlebits"
 docker compose -f deploy/docker-compose.yml pull
 docker compose -f deploy/docker-compose.yml up -d
 python scripts/smoke_test.py scripts/sample_pet.jpg
 ```
 
 `deploy/docker-compose.yml` pulls `${DOCKERHUB_USERNAME}/catsdogs-api:latest` (the
-published image is `axlebits/catsdogs-api:latest`) and mounts `../models` (i.e. this
-repo's `models/` directory) into the container read-only at `/app/models`, so the
-running container always serves whatever weights are on the host without needing a
-rebuild.
+published image is `axlebits/catsdogs-api:latest`) and mounts `${MODELS_DIR:-../models}`
+into the container read-only at `/app/models`. By default that resolves to this repo's
+`models/` directory (for local `docker compose` runs invoked from `deploy/`). CD,
+however, runs against a fresh `actions/checkout` workspace each time, which only has
+DVC pointer files and never the actual trained `model.pt` — so `.github/workflows/cd.yml`
+sets `MODELS_DIR` to a fixed absolute host path
+(`C:/Users/adith/OneDrive/Desktop/MTech/MLOPS/assignment_2/models`) that holds the real,
+`dvc pull`-able trained weights, independent of the ephemeral checkout.
 
 ## CI/CD
 

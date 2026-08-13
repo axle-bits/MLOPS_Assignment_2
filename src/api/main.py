@@ -16,7 +16,7 @@ logger = logging.getLogger("catsdogs_api")
 MODEL_PATH = Path(os.environ.get("MODEL_PATH", "models/model.pt"))
 
 app = FastAPI(title="Cats vs Dogs Classifier")
-model = load_model(str(MODEL_PATH) if MODEL_PATH.exists() else None)
+model = load_model(str(MODEL_PATH))
 
 REQUEST_COUNT = Counter("request_count", "Total requests", ["endpoint", "status"])
 REQUEST_LATENCY = Histogram("request_latency_seconds", "Request latency in seconds", ["endpoint"])
@@ -47,7 +47,7 @@ async def log_and_measure(request: Request, call_next):
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "model_loaded": True}
 
 
 @app.post("/predict")

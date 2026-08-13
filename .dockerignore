@@ -1,5 +1,6 @@
 .git
 .dvc
+.venv
 data
 mlruns
 mlartifacts
@@ -7,5 +8,9 @@ results
 logs
 tests
 docs
+models
+.github
+deploy
+README.md
 *.pyc
 __pycache__

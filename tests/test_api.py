@@ -18,7 +18,7 @@ def test_health_returns_ok():
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json() == {"status": "ok", "model_loaded": True}
 
 
 def test_predict_with_valid_image_returns_label():

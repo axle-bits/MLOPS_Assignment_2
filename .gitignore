@@ -23,9 +23,6 @@ logs/*
 .coverage
 confusion_matrix.png
 
-# Subagent-driven-development scratch workspace (ledger, briefs, review packages)
-.superpowers/
-
 # Assignment materials that live in this same directory but aren't part of the
 # submission repo itself
 dog-and-cat-classification-dataset/
