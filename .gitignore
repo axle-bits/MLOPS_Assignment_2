@@ -4,11 +4,9 @@ __pycache__/
 venv/
 env/
 
-# DVC-tracked data/models — real files live outside git, only .dvc pointers are tracked
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
+# DVC-tracked data/models — DVC manages its own nested .gitignore entries for
+# the actual tracked content (data/raw/.gitignore, data/.gitignore); only the
+# .dvc pointer files and dvc.yaml/dvc.lock are tracked by git.
 models/*.pt
 !models/.gitkeep
 
