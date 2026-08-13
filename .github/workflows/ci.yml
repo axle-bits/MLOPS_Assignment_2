@@ -22,6 +22,25 @@ jobs:
           pip install --no-cache-dir torch==2.12.0 torchvision==0.27.0 --index-url https://download.pytorch.org/whl/cpu
           pip install --no-cache-dir -r requirements.txt
 
+      - name: Ensure a model checkpoint exists for tests
+        # CI runs on a fresh GitHub-hosted checkout with no access to the
+        # project's DVC remote (a local folder on the training host), so the
+        # real trained models/model.pt is never available here. The API now
+        # fails fast when MODEL_PATH is missing (see src/api/main.py), so
+        # generate a placeholder (untrained) checkpoint purely to satisfy
+        # that startup check. Tests only assert response shape, not
+        # accuracy, so random weights are sufficient.
+        run: |
+          python -c "
+          import os
+          import torch
+          from src.inference.model import SimpleCNN
+
+          os.makedirs('models', exist_ok=True)
+          if not os.path.exists('models/model.pt'):
+              torch.save(SimpleCNN(num_classes=2).state_dict(), 'models/model.pt')
+          "
+
       - name: Run tests
         run: pytest -v
 
