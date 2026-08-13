@@ -51,6 +51,8 @@ def preprocess_dataset(raw_dir: Path, out_dir: Path, size: tuple[int, int] = (22
     for raw_class, out_class in _CLASS_MAP.items():
         class_dir = raw_dir / raw_class
         valid_files = [p for p in sorted(class_dir.glob("*.jpg")) if is_valid_image(p)]
+        if not valid_files:
+            raise ValueError(f"no valid images found in {class_dir}")
         splits = stratified_split(valid_files, seed=seed)
 
         for split_name, files in splits.items():
