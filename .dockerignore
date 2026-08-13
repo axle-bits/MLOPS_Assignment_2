@@ -1,0 +1,11 @@
+.git
+.dvc
+data
+mlruns
+mlartifacts
+results
+logs
+tests
+docs
+*.pyc
+__pycache__
