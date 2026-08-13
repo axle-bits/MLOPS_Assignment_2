@@ -1,0 +1,8 @@
+stages:
+  preprocess:
+    cmd: python -m src.data.preprocess --raw-dir data/raw/PetImages --out-dir data/processed
+    deps:
+      - src/data/preprocess.py
+      - data/raw/PetImages
+    outs:
+      - data/processed
