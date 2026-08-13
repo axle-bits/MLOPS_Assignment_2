@@ -1,3 +1,4 @@
+import argparse
 import random
 from pathlib import Path
 
@@ -41,3 +42,43 @@ def stratified_split(
         "val": shuffled[n_train : n_train + n_val],
         "test": shuffled[n_train + n_val :],
     }
+
+
+_CLASS_MAP = {"Cat": "cat", "Dog": "dog"}
+
+
+def preprocess_dataset(raw_dir: Path, out_dir: Path, size: tuple[int, int] = (224, 224), seed: int = 42) -> None:
+    for raw_class, out_class in _CLASS_MAP.items():
+        class_dir = raw_dir / raw_class
+        valid_files = [p for p in sorted(class_dir.glob("*.jpg")) if is_valid_image(p)]
+        splits = stratified_split(valid_files, seed=seed)
+
+        for split_name, files in splits.items():
+            split_dir = out_dir / split_name / out_class
+            split_dir.mkdir(parents=True, exist_ok=True)
+            for src_path in files:
+                # is_valid_image (Task 2) only checks structural integrity via
+                # Image.verify(), not a full decode — some files pass that check
+                # but still fail to decode here (confirmed during Task 2 review).
+                # Skip and log rather than let one bad file abort the whole run.
+                try:
+                    arr = load_and_resize(src_path, size=size)
+                except (OSError, ValueError) as exc:
+                    print(f"skipping unreadable file {src_path}: {exc}")
+                    continue
+                Image.fromarray(arr).save(split_dir / src_path.name, quality=90)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Preprocess raw PetImages into 224x224 RGB train/val/test splits")
+    parser.add_argument("--raw-dir", required=True)
+    parser.add_argument("--out-dir", required=True)
+    parser.add_argument("--size", type=int, default=224)
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args()
+
+    preprocess_dataset(Path(args.raw_dir), Path(args.out_dir), size=(args.size, args.size), seed=args.seed)
+
+
+if __name__ == "__main__":
+    main()
