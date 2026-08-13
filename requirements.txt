@@ -1,0 +1,11 @@
+torch==2.5.1
+torchvision==0.20.1
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pillow==11.0.0
+python-multipart==0.0.19
+numpy==1.26.4
+prometheus-client==0.21.1
+requests==2.32.3
+pytest==8.3.4
+httpx==0.28.1
