@@ -164,8 +164,9 @@ deployment machine:
 .venv\Scripts\python.exe scripts\evaluate_deployed.py --per-class 25
 ```
 
-Sends `--per-class` images per class (default 25, i.e. 50 total) from
+Sends `--per-class` images per class (default 50, i.e. 100 total if the flag is
+omitted; the example above passes `--per-class 25` for a 50-image sample) from
 `data/processed/test` to the running API's `/predict` endpoint, writes per-image
 results to `results/evaluation.csv`, and prints an accuracy summary as JSON. A live run
-against the deployed service scored **~86% accuracy** on a 50-image sample (25 cats +
-25 dogs).
+against the deployed service with `--per-class 25` scored **~86% accuracy** on that
+50-image sample (25 cats + 25 dogs).
