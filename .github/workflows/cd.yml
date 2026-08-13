@@ -1,0 +1,29 @@
+# .github/workflows/cd.yml
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: self-hosted
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pull latest image
+        run: docker compose -f deploy/docker-compose.yml pull
+
+      - name: Deploy
+        run: docker compose -f deploy/docker-compose.yml up -d
+
+      - name: Install smoke test dependency
+        run: pip install --no-cache-dir requests
+
+      - name: Run smoke test
+        run: python scripts/smoke_test.py scripts/sample_pet.jpg
