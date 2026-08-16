@@ -13,11 +13,16 @@ jobs:
     runs-on: self-hosted
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      MODELS_DIR: C:/Users/adith/OneDrive/Desktop/MTech/MLOPS/assignment_2/models
+      # Deploy the exact image CI built for this commit, not a floating :latest.
+      IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Check out the same commit CI tested, so the smoke test and the
+          # deployed image come from one revision.
+          ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Pull latest image
+      - name: Pull image built by CI for this commit
         run: docker compose -f deploy/docker-compose.yml pull
 
       - name: Deploy

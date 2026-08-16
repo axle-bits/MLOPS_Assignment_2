@@ -1,9 +1,11 @@
 # deploy/docker-compose.yml
 services:
   api:
-    image: ${DOCKERHUB_USERNAME:-axlebits}/catsdogs-api:latest
+    # IMAGE_TAG is set by the CD workflow to the exact commit SHA that CI built
+    # and pushed, so a deploy provably runs that commit's image rather than
+    # whatever ":latest" happens to point at. Defaults to "latest" for manual
+    # local deploys.
+    image: ${DOCKERHUB_USERNAME:-axlebits}/catsdogs-api:${IMAGE_TAG:-latest}
     ports:
       - "8000:8000"
-    volumes:
-      - ${MODELS_DIR:-../models}:/app/models:ro
     restart: unless-stopped
