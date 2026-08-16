@@ -47,7 +47,7 @@ async def log_and_measure(request: Request, call_next):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "model_loaded": True}
+    return {"status": "ok", "model_loaded": model is not None}
 
 
 @app.post("/predict")
