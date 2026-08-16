@@ -5,17 +5,17 @@ end-to-end MLOps pipeline: data versioning (DVC), experiment tracking (MLflow), 
 FastAPI inference service, Docker containerization, GitHub Actions CI/CD, and
 Prometheus-style monitoring.
 
-The baseline CNN (`src/inference/model.py`) reaches **~81.7% validation accuracy**
-after 8 epochs of training, and scored **~86% accuracy** on a live post-deployment
-evaluation sample (50 images) drawn from the held-out test split and sent through the
-deployed API's `/predict` endpoint.
+The baseline CNN (`src/inference/model.py`) is selected from a three-configuration
+MLflow sweep and reaches **90.1% accuracy on the held-out test split**; the deployed
+service scored **96% on a 100-image sample** sent through its `/predict` endpoint. See
+[Experiment results](#experiment-results) for the per-run breakdown.
 
 ## Project layout
 
-- `src/data/preprocess.py` — preprocessing (resize to 224x224 RGB, stratified 80/10/10
+- `src/data/preprocess.py` — preprocessing (resize to 224x224 RGB, per-class 80/10/10
   split); wired up as the `preprocess` stage in `dvc.yaml`
 - `src/train/train.py` — training loop with MLflow logging (params, per-epoch metrics,
-  confusion matrix artifact, model checkpoint)
+  held-out test metrics, confusion matrix + loss curve artifacts, model checkpoint)
 - `src/inference/` — model definition (`model.py`, a small CNN) and predict logic
   (`predict.py`), shared by the API and the scripts
 - `src/api/main.py` — FastAPI service (`/health`, `/predict`, `/metrics`)
@@ -23,21 +23,32 @@ deployed API's `/predict` endpoint.
   evaluate_deployed)
 - `scripts/smoke_test.py` — post-deploy health check + single-image prediction check
 - `scripts/evaluate_deployed.py` — samples the test split against the live API and
-  writes an accuracy report
-- `deploy/docker-compose.yml` — deployment manifest (pulls `axlebits/catsdogs-api:latest`
-  from Docker Hub)
-- `Dockerfile` — inference service image (CPU-only torch build, so the published image
-  stays small and runs anywhere)
+  writes an accuracy/precision/recall report
+- `deploy/docker-compose.yml` — deployment manifest
+- `Dockerfile` — inference service image (CPU-only torch build, trained weights baked in)
 - `.github/workflows/ci.yml` — CI: test, build, and publish to Docker Hub
 - `.github/workflows/cd.yml` — CD: deploy + smoke test on the self-hosted runner
 - `dvc.yaml` / `dvc.lock` — DVC pipeline definition (`data/raw/PetImages` ->
   `data/processed`)
-- `data/raw/PetImages.dvc`, `models/model.pt.dvc` — DVC pointer files; the actual raw
-  images and trained weights live in the DVC remote, not in git
+- `data/raw/PetImages.dvc` — DVC pointer file; the raw images live in the DVC remote,
+  not in git
 - `.dvc/config` — DVC remote configuration
-- `models/` — trained weights (`model.pt`), DVC-tracked and gitignored
+- `models/model.pt` — trained weights, committed to git (13 MB) and copied into the
+  Docker image so the published image is self-contained
 - `mlruns/` — local MLflow tracking store, gitignored
-- `results/` — output of `scripts/evaluate_deployed.py`, gitignored
+- `results/` — output of `scripts/evaluate_deployed.py`, committed as evidence
+
+### What DVC tracks, and what it doesn't
+
+DVC versions the **dataset**: the raw Kaggle images (`data/raw/PetImages.dvc`) and the
+preprocessed 224x224 splits (the `preprocess` stage output in `dvc.yaml`/`dvc.lock`),
+which together are ~1.2 GB and cannot live in git.
+
+The trained model is **not** DVC-tracked. At 13 MB it fits comfortably in git, and
+committing it is what lets CI bake the real weights into the Docker image — so the
+published image runs correctly on any machine with no bind mount, no DVC remote access,
+and no model download. Model artifacts are additionally versioned per-run by MLflow,
+which stores a checkpoint alongside the params and metrics that produced it.
 
 ## One-time setup
 
@@ -50,14 +61,18 @@ python -m venv .venv
 .venv\Scripts\dvc pull
 ```
 
-`requirements.txt` pins `torch==2.12.0` / `torchvision==0.27.0` — check that file for
-the current pins if they've since moved. `requirements-dev.txt` additionally installs
-MLflow, DVC, scikit-learn, and matplotlib on top of the runtime requirements.
+There are three dependency files, layered:
+
+- `requirements.txt` — runtime only (torch, FastAPI, Pillow, prometheus-client, …).
+  This is what the Docker image installs, so the serving image carries no test or
+  training tooling.
+- `requirements-test.txt` — runtime + pytest/httpx. This is what CI installs.
+- `requirements-dev.txt` — the above plus MLflow, DVC, scikit-learn and matplotlib, for
+  training and experiment tracking locally.
 
 The DVC remote (`.dvc/config`) is a **local folder** at `../dvc-storage/assignment2`
 (a directory sibling to this repo, not inside it) — `dvc pull` / `dvc push` are plain
-file copies with no credentials, OAuth, or Google Drive setup required. (The `dvc[gdrive]`
-extra in `requirements-dev.txt` is installed but unused by this project's remote.)
+file copies with no credentials, OAuth, or Google Drive setup required.
 
 ### GPU training (optional)
 
@@ -77,23 +92,27 @@ toolkit and to whatever torch/torchvision versions are currently pinned in
 #    data/processed was already restored by `dvc pull`, or re-run to regenerate it)
 .venv\Scripts\dvc repro preprocess
 
-# 2. Train (defaults to 8 epochs, batch size 32, lr 1e-3; auto-picks cuda if available)
-.venv\Scripts\python.exe -m src.train.train --epochs 8 --device cuda
+# 2. Train (auto-picks cuda if available)
+.venv\Scripts\python.exe -m src.train.train --epochs 15 --lr 5e-4 --run-name my-run
 
-# 3. Version the new weights with DVC
-.venv\Scripts\dvc add models/model.pt
-.venv\Scripts\dvc push
+# 3. Commit the new weights
+git add models/model.pt && git commit -m "Retrain model"
 ```
 
-Training logs params/metrics/artifacts to MLflow under the `catsdogs-baseline-cnn`
-experiment (local store at `./mlruns`); inspect a run with:
+Each run logs to MLflow under the `catsdogs-baseline-cnn` experiment (local store at
+`./mlruns`): parameters, per-epoch `train_loss`/`val_loss`/`val_accuracy`, final
+`test_loss`/`test_accuracy` on the held-out test split, and three artifacts —
+`loss_curves.png`, `confusion_matrix_val.png` and `confusion_matrix_test.png` — plus the
+model checkpoint. Compare runs with:
 
 ```powershell
 .venv\Scripts\mlflow ui
 ```
 
-then open `http://localhost:5000`. A confusion matrix is also written to
-`confusion_matrix.png` and logged as an MLflow artifact each run.
+then open `http://localhost:5000`.
+
+The test split is only ever touched by this final evaluation and by
+`scripts/evaluate_deployed.py`; it is never used for training or model selection.
 
 ## Run the API locally
 
@@ -103,19 +122,24 @@ Directly, using the venv:
 .venv\Scripts\python.exe -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000
 ```
 
-Or built into a container, same as the CI/CD image:
+Or built into a container, same as the CI/CD image. No volume mount is needed — the
+weights are inside the image:
 
 ```bash
 docker build -t catsdogs-api:local .
-docker run -d -p 8000:8000 -v "$(pwd)/models:/app/models:ro" catsdogs-api:local
+docker run -d -p 8000:8000 catsdogs-api:local
 curl http://localhost:8000/health
 ```
 
-The API reads its weights from `MODEL_PATH` (default `models/model.pt`) and exposes:
+The API reads its weights from `MODEL_PATH` (default `models/model.pt`, which is where
+the Dockerfile puts them) and exposes:
 
-- `GET /health` — liveness check
+- `GET /health` — liveness check, reports whether the model loaded
 - `POST /predict` — multipart image upload, returns `{"label": "cat"|"dog", "probabilities": {...}}`
 - `GET /metrics` — Prometheus text-format metrics (request counts and latency histograms)
+
+Model loading is deliberately fail-fast: a missing or unreadable checkpoint raises at
+startup rather than letting the service come up and silently serve random weights.
 
 ## Deploy via Docker Compose
 
@@ -126,51 +150,104 @@ docker compose -f deploy/docker-compose.yml up -d
 python scripts/smoke_test.py scripts/sample_pet.jpg
 ```
 
-`deploy/docker-compose.yml` pulls `${DOCKERHUB_USERNAME}/catsdogs-api:latest` (the
-published image is `axlebits/catsdogs-api:latest`) and mounts `${MODELS_DIR:-../models}`
-into the container read-only at `/app/models`. By default that resolves to this repo's
-`models/` directory (for local `docker compose` runs invoked from `deploy/`). CD,
-however, runs against a fresh `actions/checkout` workspace each time, which only has
-DVC pointer files and never the actual trained `model.pt` — so `.github/workflows/cd.yml`
-sets `MODELS_DIR` to a fixed absolute host path
-(`C:/Users/adith/OneDrive/Desktop/MTech/MLOPS/assignment_2/models`) that holds the real,
-`dvc pull`-able trained weights, independent of the ephemeral checkout.
+`deploy/docker-compose.yml` runs `${DOCKERHUB_USERNAME}/catsdogs-api:${IMAGE_TAG}`,
+defaulting to `axlebits/catsdogs-api:latest` for manual deploys. CD overrides
+`IMAGE_TAG` with the commit SHA (see below).
 
 ## CI/CD
 
 **CI** (`.github/workflows/ci.yml`) runs on every push to any branch and on pull
 requests into `main`: sets up Python 3.11, installs the CPU build of torch plus
-`requirements.txt`, and runs `pytest -v`. On a push to `main` it additionally builds
-and pushes the Docker image to Docker Hub as `axlebits/catsdogs-api:latest` and
-`axlebits/catsdogs-api:<git-sha>` (using the `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`
-repo secrets). On any other branch or PR it only does a build-verification pass —
-image built, not pushed.
+`requirements-test.txt`, and runs `pytest -v`. On a push to `main` it additionally
+builds and pushes the Docker image to Docker Hub as `axlebits/catsdogs-api:latest`
+**and** `axlebits/catsdogs-api:<git-sha>` (using the `DOCKERHUB_USERNAME` /
+`DOCKERHUB_TOKEN` repo secrets). On any other branch or PR it only does a
+build-verification pass — image built, not pushed.
 
 **CD** (`.github/workflows/cd.yml`) is triggered by a `workflow_run` event once the CI
-workflow completes successfully on `main`. It runs on `self-hosted`, **not** a
-GitHub-hosted runner — this is required because the job deploys via Docker Compose
-directly onto the host machine, and a GitHub-hosted runner's VM is torn down after the
-job and can't host a persistent deployment. The job pulls the new image, runs
-`docker compose up -d`, and then runs `scripts/smoke_test.py` against the freshly
-deployed container.
+workflow completes successfully on `main`. It checks out the exact commit CI tested and
+deploys `IMAGE_TAG=<that commit's SHA>`, so the running container is provably the image
+CI just built rather than whatever `:latest` currently resolves to. It then runs
+`scripts/smoke_test.py` against the freshly deployed container; a failed smoke test
+fails the workflow.
 
-For CD to pick up jobs, a self-hosted runner must be registered and running on the
-deployment machine:
+CD runs on `self-hosted`, **not** a GitHub-hosted runner — the job deploys via Docker
+Compose directly onto the host machine, and a GitHub-hosted runner's VM is torn down
+after the job, so it could not host a persistent deployment. For CD to pick up jobs, a
+self-hosted runner must be registered and running on the deployment machine:
 
 1. In the GitHub repo, go to **Settings > Actions > Runners > New self-hosted
    runner** and follow the generated download/config commands.
 2. Start it with `run.cmd` (Windows) — it needs to stay running (or be installed as a
    service) for the CD workflow to have a runner to dispatch to.
 
+The smoke test asserts more than a 200 response: it checks that a known cat image is
+classified as `cat` with >0.6 confidence, so a deployment serving the wrong or an
+untrained checkpoint fails the pipeline instead of passing a shape-only check.
+
+## Monitoring
+
+`src/api/main.py` installs an HTTP middleware that, for every request, emits a JSON log
+line (endpoint, method, status, latency in ms) and updates two Prometheus metrics:
+
+- `request_count{endpoint,status}` — a counter
+- `request_latency_seconds{endpoint}` — a histogram
+
+Both are exposed in Prometheus text format at `GET /metrics`, so the service can be
+scraped by a Prometheus server without any code change. Predictions are logged as
+label + probabilities; no image bytes or client identifiers are written to the logs.
+
 ## Post-deployment evaluation
 
 ```powershell
-.venv\Scripts\python.exe scripts\evaluate_deployed.py --per-class 25
+.venv\Scripts\python.exe scripts\evaluate_deployed.py --per-class 50
 ```
 
-Sends `--per-class` images per class (default 50, i.e. 100 total if the flag is
-omitted; the example above passes `--per-class 25` for a 50-image sample) from
-`data/processed/test` to the running API's `/predict` endpoint, writes per-image
-results to `results/evaluation.csv`, and prints an accuracy summary as JSON. A live run
-against the deployed service with `--per-class 25` scored **~86% accuracy** on that
-50-image sample (25 cats + 25 dogs).
+Sends `--per-class` images per class (default 50, i.e. 100 total) from
+`data/processed/test` to the **running deployed API's** `/predict` endpoint, then writes:
+
+- `results/evaluation.csv` — one row per image (path, true label, predicted label, both
+  class probabilities)
+- `results/evaluation_summary.json` — accuracy, per-class precision/recall/F1/support,
+  and a confusion matrix
+
+Both files are committed, so the measured post-deployment performance is part of the
+submission rather than something a reader has to reproduce.
+
+## Experiment results
+
+Three configurations were trained and compared in MLflow:
+
+| Run | lr | batch | epochs | val accuracy | test accuracy | test loss |
+| --- | --- | --- | --- | --- | --- | --- |
+| `baseline-lr1e-3-bs32-e8` | 1e-3 | 32 | 8 | 0.8372 | 0.8496 | 0.3482 |
+| `lowlr-lr5e-4-bs32-e15` | 5e-4 | 32 | 15 | 0.8816 | 0.8940 | 0.2534 |
+| **`bigbatch-lr1e-3-bs64-e12`** | 1e-3 | 64 | 12 | **0.8896** | **0.9008** | **0.2418** |
+
+Model selection uses **validation** accuracy; the test split is reported but never used
+to choose between runs. The winning configuration (larger batch, 12 epochs) is the
+checkpoint committed at `models/model.pt` and baked into the published image. The
+earlier 8-epoch runs were still improving when they stopped, which is what the longer
+schedules recover.
+
+### Deployed service performance
+
+Running `scripts/evaluate_deployed.py --per-class 50` against the deployed container
+(100 images sent through HTTP `/predict`):
+
+| Metric | Value |
+| --- | --- |
+| Accuracy | 0.96 |
+| Cat precision / recall / F1 | 0.979 / 0.940 / 0.959 |
+| Dog precision / recall / F1 | 0.942 / 0.980 / 0.961 |
+
+Confusion matrix (rows = true, columns = predicted): 47/3 for cats, 1/49 for dogs.
+
+Note that 0.96 here is measured on a 100-image subsample (the first 50 files per class
+by filename), not the full 2,498-image test split — the full-test-set figure is the
+0.9008 in the table above. The subsample is deterministic so the number is reproducible,
+but it is a small sample and should be read as consistent with ~90%, not as a better
+result.
+
+Full per-image output is in `results/evaluation.csv`, and the metrics above are in
+`results/evaluation_summary.json`.
