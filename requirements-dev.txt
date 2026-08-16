@@ -1,4 +1,6 @@
--r requirements.txt
+# Full local development environment: runtime + tests + training, experiment
+# tracking, and data versioning tooling.
+-r requirements-test.txt
 mlflow==2.18.0
 dvc==3.58.0
 pathspec==0.12.1

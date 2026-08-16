@@ -4,16 +4,22 @@ __pycache__/
 venv/
 env/
 
-# DVC-tracked data/models — DVC manages its own nested .gitignore entries for
-# the actual tracked content (data/raw/.gitignore, data/.gitignore); only the
-# .dvc pointer files and dvc.yaml/dvc.lock are tracked by git.
-models/*.pt
-!models/.gitkeep
+# DVC-tracked datasets — DVC manages its own nested .gitignore entries for the
+# actual tracked content (data/raw/.gitignore, data/.gitignore); only the .dvc
+# pointer files and dvc.yaml/dvc.lock are tracked by git.
+#
+# models/model.pt is deliberately NOT in this list: the trained weights are
+# committed to git and baked into the Docker image, so the published image is
+# self-contained and runs anywhere without a host bind mount.
 
 mlruns/
 mlartifacts/
+# Post-deployment evaluation output is committed as evidence for M5; only
+# ad-hoc extra runs are ignored.
 results/*
 !results/.gitkeep
+!results/evaluation.csv
+!results/evaluation_summary.json
 logs/*
 !logs/.gitkeep
 
