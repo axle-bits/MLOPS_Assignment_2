@@ -1,7 +1,7 @@
 import numpy as np
 from PIL import Image
 
-from src.data.preprocess import is_valid_image, load_and_resize, stratified_split
+from src.data.preprocess import is_valid_image, load_and_resize, split_items
 
 
 def test_load_and_resize_returns_224x224_rgb(tmp_path):
@@ -37,10 +37,10 @@ def test_is_valid_image_false_for_corrupt_file(tmp_path):
     assert is_valid_image(bad_path) is False
 
 
-def test_stratified_split_proportions():
+def test_split_items_proportions():
     items = [f"file{i}" for i in range(100)]
 
-    splits = stratified_split(items, train_ratio=0.8, val_ratio=0.1, test_ratio=0.1, seed=42)
+    splits = split_items(items, train_ratio=0.8, val_ratio=0.1, test_ratio=0.1, seed=42)
 
     assert len(splits["train"]) == 80
     assert len(splits["val"]) == 10
@@ -49,10 +49,10 @@ def test_stratified_split_proportions():
     assert sorted(all_items) == sorted(items)
 
 
-def test_stratified_split_is_deterministic_for_a_given_seed():
+def test_split_items_is_deterministic_for_a_given_seed():
     items = [f"file{i}" for i in range(50)]
 
-    first = stratified_split(items, seed=7)
-    second = stratified_split(items, seed=7)
+    first = split_items(items, seed=7)
+    second = split_items(items, seed=7)
 
     assert first == second

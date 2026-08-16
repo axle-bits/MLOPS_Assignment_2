@@ -21,13 +21,19 @@ def load_and_resize(path: Path, size: tuple[int, int] = (224, 224)) -> np.ndarra
         return np.array(img, dtype=np.uint8)
 
 
-def stratified_split(
+def split_items(
     items: list,
     train_ratio: float = 0.8,
     val_ratio: float = 0.1,
     test_ratio: float = 0.1,
     seed: int = 42,
 ) -> dict[str, list]:
+    """Shuffle `items` and split them by ratio into train/val/test.
+
+    Called once per class by `preprocess_dataset`, which is what makes the
+    overall split stratified — each class is divided 80/10/10 independently,
+    so every split keeps the source class balance.
+    """
     assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6
 
     shuffled = list(items)
@@ -53,7 +59,7 @@ def preprocess_dataset(raw_dir: Path, out_dir: Path, size: tuple[int, int] = (22
         valid_files = [p for p in sorted(class_dir.glob("*.jpg")) if is_valid_image(p)]
         if not valid_files:
             raise ValueError(f"no valid images found in {class_dir}")
-        splits = stratified_split(valid_files, seed=seed)
+        splits = split_items(valid_files, seed=seed)
 
         for split_name, files in splits.items():
             split_dir = out_dir / split_name / out_class
