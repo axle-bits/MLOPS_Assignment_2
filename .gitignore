@@ -17,11 +17,8 @@ mlartifacts/
 # Post-deployment evaluation output is committed as evidence for M5; only
 # ad-hoc extra runs are ignored.
 results/*
-!results/.gitkeep
 !results/evaluation.csv
 !results/evaluation_summary.json
-logs/*
-!logs/.gitkeep
 
 .env
 *.egg-info/
