@@ -139,14 +139,15 @@ curl http://localhost:8000/health
 # {"status":"ok","model_loaded":true}
 
 curl -F "file=@scripts/sample_pet.jpg" http://localhost:8000/predict
-# {"label":"cat","probabilities":{"cat":0.9914933443069458,"dog":0.008506596088409424}}
+# {"label":"cat","probabilities":{"cat":0.9914933443069458,"dog":0.008506596088409424},"model_version":"1.0.0"}
 ```
 
 The API reads its weights from `MODEL_PATH` (default `models/model.pt`, which is where
 the Dockerfile puts them) and exposes:
 
 - `GET /health` — liveness check, reports whether the model loaded
-- `POST /predict` — multipart image upload, returns `{"label": "cat"|"dog", "probabilities": {...}}`
+- `POST /predict` — multipart image upload, returns `{"label": "cat"|"dog", "probabilities": {...},
+  "model_version": "..."}`
 - `GET /metrics` — Prometheus text-format metrics (request counts and latency histograms)
 
 Model loading is deliberately fail-fast: a missing or unreadable checkpoint raises at

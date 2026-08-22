@@ -14,6 +14,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("catsdogs_api")
 
 MODEL_PATH = Path(os.environ.get("MODEL_PATH", "models/model.pt"))
+# Reported in the /predict response so a caller can tell which build answered.
+MODEL_VERSION = "1.0.0"
 
 app = FastAPI(title="Cats vs Dogs Classifier")
 model = load_model(str(MODEL_PATH))
@@ -63,7 +65,7 @@ async def predict_endpoint(file: UploadFile = File(...)):
 
     label, probs = predict(model, tensor)
     logger.info(json.dumps({"prediction": label, "probabilities": probs}))
-    return {"label": label, "probabilities": probs}
+    return {"label": label, "probabilities": probs, "model_version": MODEL_VERSION}
 
 
 @app.get("/metrics")

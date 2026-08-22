@@ -30,6 +30,7 @@ def test_predict_with_valid_image_returns_label():
     body = response.json()
     assert body["label"] in ("cat", "dog")
     assert "probabilities" in body
+    assert "model_version" in body
 
 
 def test_predict_with_non_image_returns_400():
