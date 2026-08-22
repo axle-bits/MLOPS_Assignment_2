@@ -37,6 +37,8 @@ service scored **96% on a 100-image sample** sent through its `/predict` endpoin
   Docker image so the published image is self-contained
 - `mlruns/` — local MLflow tracking store, gitignored
 - `results/` — output of `scripts/evaluate_deployed.py`, committed as evidence
+- `docs/` — loss curves and confusion matrices for the selected run, copied out of
+  MLflow so they can be read without starting the tracking UI
 
 ### What DVC tracks, and what it doesn't
 
@@ -128,7 +130,16 @@ weights are inside the image:
 ```bash
 docker build -t catsdogs-api:local .
 docker run -d -p 8000:8000 catsdogs-api:local
+```
+
+Verify both endpoints against the running container:
+
+```bash
 curl http://localhost:8000/health
+# {"status":"ok","model_loaded":true}
+
+curl -F "file=@scripts/sample_pet.jpg" http://localhost:8000/predict
+# {"label":"cat","probabilities":{"cat":0.9914933443069458,"dog":0.008506596088409424}}
 ```
 
 The API reads its weights from `MODEL_PATH` (default `models/model.pt`, which is where
@@ -230,6 +241,25 @@ checkpoint committed at `models/model.pt` and baked into the published image. Th
 earlier 8-epoch runs were still improving when they stopped, which is what the longer
 schedules recover.
 
+### Training artifacts
+
+MLflow logs these per run; the copies below are from the selected run
+(`bigbatch-lr1e-3-bs64-e12`) and also live in `docs/`.
+
+![Loss curves and validation accuracy](docs/loss_curves.png)
+
+Training and validation loss fall together for all 12 epochs with no widening gap, and
+validation accuracy is still climbing at the last epoch — the model is underfitting
+rather than overfitting, so a longer schedule or more capacity is where further accuracy
+would come from.
+
+![Test confusion matrix](docs/confusion_matrix_test.png)
+
+On the 2,500-image test split: 1157/1250 cats and 1095/1250 dogs correct, i.e. the
+0.9008 in the table above. Errors are close to symmetric, with a slight bias toward
+predicting `cat` (155 dogs called cat vs 93 cats called dog). The validation confusion
+matrix is at `docs/confusion_matrix_val.png`.
+
 ### Deployed service performance
 
 Running `scripts/evaluate_deployed.py --per-class 50` against the deployed container
@@ -244,7 +274,7 @@ Running `scripts/evaluate_deployed.py --per-class 50` against the deployed conta
 Confusion matrix (rows = true, columns = predicted): 47/3 for cats, 1/49 for dogs.
 
 Note that 0.96 here is measured on a 100-image subsample (the first 50 files per class
-by filename), not the full 2,498-image test split — the full-test-set figure is the
+by filename), not the full 2,500-image test split — the full-test-set figure is the
 0.9008 in the table above. The subsample is deterministic so the number is reproducible,
 but it is a small sample and should be read as consistent with ~90%, not as a better
 result.
