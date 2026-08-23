@@ -39,6 +39,7 @@ service scored **96% on a 100-image sample** sent through its `/predict` endpoin
 - `results/` — output of `scripts/evaluate_deployed.py`, committed as evidence
 - `docs/` — loss curves and confusion matrices for the selected run, copied out of
   MLflow so they can be read without starting the tracking UI
+- `postman/` — Postman collection for manually verifying the deployed endpoints
 
 ### What DVC tracks, and what it doesn't
 
@@ -141,6 +142,18 @@ curl http://localhost:8000/health
 curl -F "file=@scripts/sample_pet.jpg" http://localhost:8000/predict
 # {"label":"cat","probabilities":{"cat":0.9914933443069458,"dog":0.008506596088409424},"model_version":"1.0.0"}
 ```
+
+On Windows PowerShell, `curl` is an alias for `Invoke-WebRequest`, which does not accept
+`-F` and will fail. Use `curl.exe` explicitly there, or run the commands from Git Bash.
+
+### Postman
+
+`postman/catsdogs-api.postman_collection.json` covers the same checks as a collection:
+health, a prediction, the 400 on a non-image upload, and the metrics endpoint. Import it
+into Postman, then open the **Predict** request and select an image for the `file` form-data
+key (`scripts/sample_pet.jpg` works) — Postman cannot store the file path portably, so
+that selection is a one-time step per machine. Each request carries assertions, so
+**Send** reports pass/fail rather than leaving you to eyeball the response.
 
 The API reads its weights from `MODEL_PATH` (default `models/model.pt`, which is where
 the Dockerfile puts them) and exposes:

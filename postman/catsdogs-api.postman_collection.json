@@ -1,0 +1,175 @@
+{
+  "info": {
+    "name": "Cats vs Dogs API",
+    "description": "Manual verification of the deployed inference service (Assignment 2, M2).\n\nBefore the first run, open the 'Predict' request, go to Body > form-data, and select an image file for the 'file' key. Use scripts/sample_pet.jpg from the repository, or any cat/dog photo.\n\nThe baseUrl collection variable points at the locally deployed container.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        },
+        "description": "Liveness check. Reports whether the model checkpoint loaded successfully."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"service reports ok\", function () {",
+              "    pm.expect(pm.response.json().status).to.eql(\"ok\");",
+              "});",
+              "",
+              "pm.test(\"model is loaded\", function () {",
+              "    pm.expect(pm.response.json().model_loaded).to.be.true;",
+              "});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "2. Predict",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": null,
+              "description": "Select an image. The key must be named 'file' to match the API."
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/predict",
+          "host": ["{{baseUrl}}"],
+          "path": ["predict"]
+        },
+        "description": "Send an image and get back the predicted label, both class probabilities, and the version of the deployed build that answered."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"returns a valid label\", function () {",
+              "    pm.expect(pm.response.json().label).to.be.oneOf([\"cat\", \"dog\"]);",
+              "});",
+              "",
+              "pm.test(\"returns probabilities for both classes\", function () {",
+              "    var probs = pm.response.json().probabilities;",
+              "    pm.expect(probs).to.have.property(\"cat\");",
+              "    pm.expect(probs).to.have.property(\"dog\");",
+              "});",
+              "",
+              "pm.test(\"reports the deployed model version\", function () {",
+              "    pm.expect(pm.response.json()).to.have.property(\"model_version\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "3. Predict - rejects a non-image",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "text",
+              "value": "this is not an image"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/predict",
+          "host": ["{{baseUrl}}"],
+          "path": ["predict"]
+        },
+        "description": "Input validation: a non-image upload is rejected with HTTP 400 rather than being fed to the model."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"rejected with 400\", function () {",
+              "    pm.response.to.have.status(400);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "4. Metrics",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/metrics",
+          "host": ["{{baseUrl}}"],
+          "path": ["metrics"]
+        },
+        "description": "Prometheus text-format metrics: request counts by endpoint and status, and a request latency histogram."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"exposes the request counter\", function () {",
+              "    pm.expect(pm.response.text()).to.include(\"request_count\");",
+              "});",
+              "",
+              "pm.test(\"exposes the latency histogram\", function () {",
+              "    pm.expect(pm.response.text()).to.include(\"request_latency_seconds\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    }
+  ]
+}
