@@ -1,10 +1,15 @@
 **MLOps S1-25_AIMLCZG523 — Assignment 2**
+
 **Student:** Adithya M Sasi (2024AC05785)
 
 **Repository:** https://github.com/axle-bits/MLOPS_Assignment_2
+
 **Docker image:** https://hub.docker.com/r/axlebits/catsdogs-api
+
 **Video (YouTube):** [ADD LINK BEFORE SUBMISSION]
+
 **Video (Google Drive):** [ADD LINK BEFORE SUBMISSION]
+
 **Model artifacts (Drive):** [ADD LINK BEFORE SUBMISSION]
 
 ---
