@@ -9,7 +9,7 @@ env/
 # pointer files and dvc.yaml/dvc.lock are tracked by git.
 #
 # models/model.pt is deliberately NOT in this list: the trained weights are
-# committed to git and baked into the Docker image, so the published image is
+# committed to git and embedded in the Docker image, so the published image is
 # self-contained and runs anywhere without a host bind mount.
 
 mlruns/

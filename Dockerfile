@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir torch==2.12.0 torchvision==0.27.0 --index-url htt
 
 COPY src/ src/
 
-# Bake the trained weights into the image so it is self-contained: `docker run`
+# Copy the trained weights into the image so it is self-contained: `docker run`
 # on any host serves real predictions with no bind mount or model download.
 COPY models/model.pt models/model.pt
 

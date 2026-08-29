@@ -55,7 +55,7 @@ training-time augmentation described in [Train the model](#train-the-model).
 - `scripts/evaluate_deployed.py` — samples the test split against the live API and
   writes an accuracy/precision/recall report
 - `deploy/docker-compose.yml` — deployment manifest
-- `Dockerfile` — inference service image (CPU-only torch build, trained weights baked in)
+- `Dockerfile` — inference service image (CPU-only torch build, trained weights included)
 - `.github/workflows/ci.yml` — CI: test, build, and publish to Docker Hub
 - `.github/workflows/cd.yml` — CD: deploy + smoke test on the self-hosted runner
 - `dvc.yaml` / `dvc.lock` — DVC pipeline definition (`data/raw/PetImages` ->
@@ -78,7 +78,7 @@ preprocessed 224x224 splits (the `preprocess` stage output in `dvc.yaml`/`dvc.lo
 which together are ~1.2 GB and cannot live in git.
 
 The trained model is **not** DVC-tracked. At 13 MB it fits comfortably in git, and
-committing it is what lets CI bake the real weights into the Docker image — so the
+committing it is what lets CI embed the real weights into the Docker image — so the
 published image runs correctly on any machine with no bind mount, no DVC remote access,
 and no model download. Model artifacts are additionally versioned per-run by MLflow,
 which stores a checkpoint alongside the params and metrics that produced it.
@@ -132,7 +132,7 @@ toolkit and to whatever torch/torchvision versions are currently pinned in
 git add models/model.pt && git commit -m "Retrain model"
 ```
 
-Data augmentation is applied at training time rather than baked into the preprocessed
+Data augmentation is applied at training time rather than written into the preprocessed
 files: random horizontal flip, random rotation up to 15 degrees, and colour jitter on
 brightness and contrast. Validation and test images use a resize-only transform, so
 evaluation is never done on augmented data.
@@ -298,7 +298,7 @@ Three configurations were trained and compared in MLflow:
 
 Model selection uses **validation** accuracy; the test split is reported but never used
 to choose between runs. The winning configuration (larger batch, 12 epochs) is the
-checkpoint committed at `models/model.pt` and baked into the published image. The
+checkpoint committed at `models/model.pt` and embedded in the published image. The
 earlier 8-epoch runs were still improving when they stopped, which is what the longer
 schedules recover.
 
