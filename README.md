@@ -175,7 +175,7 @@ curl http://localhost:8000/health
 # {"status":"ok","model_loaded":true}
 
 curl -F "file=@scripts/sample_pet.jpg" http://localhost:8000/predict
-# {"label":"cat","probabilities":{"cat":0.9914933443069458,"dog":0.008506596088409424},"model_version":"1.0.0"}
+# {"label":"cat","probabilities":{"cat":0.9914933443069458,"dog":0.008506596088409424},"model_version":"2.0.0"}
 ```
 
 On Windows PowerShell, `curl` is an alias for `Invoke-WebRequest`, which does not accept
