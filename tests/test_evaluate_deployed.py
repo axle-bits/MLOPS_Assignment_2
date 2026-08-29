@@ -63,7 +63,7 @@ def test_compute_metrics_handles_class_never_predicted():
 
     metrics = compute_metrics(results)
 
-    # No "dog" predictions at all — precision is undefined, reported as 0.0
+    # No "dog" predictions at all - precision is undefined, reported as 0.0
     # rather than raising ZeroDivisionError.
     assert metrics["per_class"]["dog"]["precision"] == 0.0
     assert metrics["per_class"]["dog"]["recall"] == 0.0

@@ -31,7 +31,7 @@ def split_items(
     """Shuffle `items` and split them by ratio into train/val/test.
 
     Called once per class by `preprocess_dataset`, which is what makes the
-    overall split stratified — each class is divided 80/10/10 independently,
+    overall split stratified - each class is divided 80/10/10 independently,
     so every split keeps the source class balance.
     """
     assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6
@@ -66,7 +66,7 @@ def preprocess_dataset(raw_dir: Path, out_dir: Path, size: tuple[int, int] = (22
             split_dir.mkdir(parents=True, exist_ok=True)
             for src_path in files:
                 # is_valid_image (Task 2) only checks structural integrity via
-                # Image.verify(), not a full decode — some files pass that check
+                # Image.verify(), not a full decode - some files pass that check
                 # but still fail to decode here (confirmed during Task 2 review).
                 # Skip and log rather than let one bad file abort the whole run.
                 try:
