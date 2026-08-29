@@ -15,7 +15,7 @@ logger = logging.getLogger("catsdogs_api")
 
 MODEL_PATH = Path(os.environ.get("MODEL_PATH", "models/model.pt"))
 # Reported in the /predict response so a caller can tell which build answered.
-MODEL_VERSION = "1.0.1"
+MODEL_VERSION = "2.0.0"
 
 app = FastAPI(title="Cats vs Dogs Classifier")
 model = load_model(str(MODEL_PATH))
