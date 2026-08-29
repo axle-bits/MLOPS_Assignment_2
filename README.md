@@ -1,3 +1,14 @@
+**MLOps S1-25_AIMLCZG523 — Assignment 2**
+**Student:** Adithya M Sasi (2024AC05785)
+
+**Repository:** https://github.com/axle-bits/MLOPS_Assignment_2
+**Docker image:** https://hub.docker.com/r/axlebits/catsdogs-api
+**Video (YouTube):** [ADD LINK BEFORE SUBMISSION]
+**Video (Google Drive):** [ADD LINK BEFORE SUBMISSION]
+**Model artifacts (Drive):** [ADD LINK BEFORE SUBMISSION]
+
+---
+
 # Cats vs Dogs — MLOps Pipeline
 
 Binary image classification (cats vs dogs) for a pet adoption platform, built as an
@@ -9,6 +20,20 @@ The baseline CNN (`src/inference/model.py`) is selected from a three-configurati
 MLflow sweep and reaches **90.1% accuracy on the held-out test split**; the deployed
 service scored **96% on a 100-image sample** sent through its `/predict` endpoint. See
 [Experiment results](#experiment-results) for the per-run breakdown.
+
+## Requirement coverage
+
+| Module | Marks | Where it's satisfied |
+| --- | --- | --- |
+| M1 — Model Development & Experiment Tracking | 10 | Git + DVC for versioning; `src/train/train.py`; MLflow runs in `mlruns/` — see [Experiment results](#experiment-results) |
+| M2 — Model Packaging & Containerization | 10 | `src/api/main.py` (FastAPI); `Dockerfile`; `requirements.txt` — see [Run the API locally](#run-the-api-locally) |
+| M3 — CI Pipeline | 10 | `tests/` (19 pytest tests); `.github/workflows/ci.yml` — see [Testing](#testing) and [CI/CD](#cicd) |
+| M4 — CD Pipeline & Deployment | 10 | `deploy/docker-compose.yml`; `.github/workflows/cd.yml`; `scripts/smoke_test.py` — see [CI/CD](#cicd) |
+| M5 — Monitoring, Logs & Final Submission | 10 | `/metrics`; `scripts/evaluate_deployed.py` — see [Monitoring](#monitoring) and [Post-deployment evaluation](#post-deployment-evaluation) |
+
+The dataset-prep requirements stated above the modules in the brief (224x224 RGB,
+80/10/10 split, data augmentation) are covered by `src/data/preprocess.py` and the
+training-time augmentation described in [Train the model](#train-the-model).
 
 ## Project layout
 
@@ -102,6 +127,11 @@ toolkit and to whatever torch/torchvision versions are currently pinned in
 git add models/model.pt && git commit -m "Retrain model"
 ```
 
+Data augmentation is applied at training time rather than baked into the preprocessed
+files: random horizontal flip, random rotation up to 15 degrees, and colour jitter on
+brightness and contrast. Validation and test images use a resize-only transform, so
+evaluation is never done on augmented data.
+
 Each run logs to MLflow under the `catsdogs-baseline-cnn` experiment (local store at
 `./mlruns`): parameters, per-epoch `train_loss`/`val_loss`/`val_accuracy`, final
 `test_loss`/`test_accuracy` on the held-out test split, and three artifacts —
@@ -165,6 +195,18 @@ the Dockerfile puts them) and exposes:
 
 Model loading is deliberately fail-fast: a missing or unreadable checkpoint raises at
 startup rather than letting the service come up and silently serve random weights.
+
+## Testing
+
+```powershell
+.venv\Scripts\python.exe -m pytest -v
+```
+
+19 tests across `tests/test_preprocessing.py`, `test_model.py`, `test_inference.py`,
+`test_api.py`, `test_metrics.py` and `test_evaluate_deployed.py` — covering the
+preprocessing split/validity logic, the model definition, inference helpers, all three
+API endpoints, and the Prometheus metric calculations. This is the same command CI runs
+on every push.
 
 ## Deploy via Docker Compose
 
