@@ -38,3 +38,6 @@ REPORT.docx
 RECORDING_GUIDE.docx
 RECORDING_RUNBOOK.html
 PIPELINE_WHITEBOARD.html
+
+# Packaged copy of the repo assembled for zip submission -- generated, not source.
+submission_package/
